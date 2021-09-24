@@ -3,7 +3,7 @@
 
 FROM debian:stretch as prebuilder
 
-MAINTAINER MathWorks
+LABEL MAINTAINER=MathWorks
 
 #### Get Dependencies ####
 
@@ -133,14 +133,14 @@ ADD matlab-install /matlab-install/
 #   Uncomment products you want to install
 ADD matlab_installer_input.txt /matlab_installer_input.txt
 
-ARG LICENSE_SERVER
 # For a network passcode install prior to R2020a we do need a valid network.lic file that we
 # can generate from the LICENSE_SERVER argument. We will print this file out to show that we
 # have successfully generated it.
-RUN SERVER=$(echo ${LICENSE_SERVER} | sed 's/.*@//') \
-    && PORT=$(echo ${LICENSE_SERVER} | sed 's/@.*//') \
-    && printf "SERVER ${SERVER} ${PORT}\nUSE_SERVER\n" > /tmp/network.lic \
-    && cat /tmp/network.lic
+# ARG LICENSE_SERVER
+# RUN SERVER=$(echo ${LICENSE_SERVER} | sed 's/.*@//') \
+#     && PORT=$(echo ${LICENSE_SERVER} | sed 's/@.*//') \
+#     && printf "SERVER ${SERVER} ${PORT}\nUSE_SERVER\n" > /tmp/network.lic \
+#     && cat /tmp/network.lic
 
 # Now install MATLAB
 RUN cd /matlab-install \
@@ -172,26 +172,29 @@ RUN echo "matlab ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/matlab \
 # One of the following 2 ways of configuring the FlexLM server to use must be
 # uncommented.
 
-ARG LICENSE_SERVER
 # Specify the host and port of the machine that serves the network licenses 
 # if you want to bind in the license info as an environment variable. This 
 # is the preferred option for licensing. It is either possible to build with 
 # something like --build-arg LICENSE_SERVER=27000@MyServerName, alternatively
 # you could specify the license server directly using
 #       ENV MLM_LICENSE_FILE=27000@flexlm-server-name
-ENV MLM_LICENSE_FILE=$LICENSE_SERVER
+# ARG LICENSE_SERVER
+# ENV MLM_LICENSE_FILE=$LICENSE_SERVER
 
 # Alternatively you can put a license file (or license information) into the 
 # container. You should fill this file out with the details of the license 
 # server you want to use nd uncomment the following line.
 # ADD network.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
+ADD license.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
 
 # Finally clean up after apt-get
 RUN apt-get clean \
     && apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/*        
 
-USER matlab
-WORKDIR /home/matlab
+ARG LICENSE_USERNAME
+RUN useradd -ms /bin/bash $LICENSE_USERNAME
+USER $LICENSE_USERNAME
+WORKDIR /home/$LICENSE_USERNAME
 
 ENTRYPOINT ["/opt/startscript/startmatlab.sh"]

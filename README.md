@@ -1,4 +1,15 @@
-# Create a MATLAB Container Image
+# MATLAB Docker Image
+
+This repo is forked from [matlab-dockerfile](https://github.com/mathworks-ref-arch/matlab-dockerfile) and has been modified to allow individual license files. 2021b has been tested to build and run successfully without issues.
+
+## Before you begin
+You need a valid MATLAB license
+- Individual License (license.lic)
+- Network License (network.lic)
+- License Server (running at e.g. 27000@MyServerName)
+
+You should be able to login to your Mathworks Account and be able to download MATLAB for linux.
+
 ## Requirements
 You must perform these steps on a Linux platform.
 Before starting, you must install the following on the client platform
@@ -18,17 +29,20 @@ Use the container image as a scalable and reproducible method to deploy MATLAB i
 ## Step 2. Choose MATLAB Installation Method
 To install MATLAB into the container image, choose a MATLAB installation method. You can use MATLAB installation files or a MATLAB ISO image. 
 
-### MATLAB Installation Files
+### MATLAB Installation Files (Recommended)
 To obtain the installation files, you must be an administrator for the license linked with your MathWorks account.
 1. From the [MathWorks Downloads](https://www.mathworks.com/downloads/) page, select the desired version of MATLAB.
-2. Download the Installer for Linux.
-3. Follow the steps at [Download Products Without Installation](https://www.mathworks.com/help/install/ug/download-only.html). 
-4. Specify the location of the `matlab-install` subdirectory of the cloned repository as the path to the download folder. 
-5. Select the installation files for the Linux (64-bit) version of MATLAB. 
-6. Select the products you want to install in the container image.
-7. Confirm your selections and complete the download. 
+2. Download the Installer for Linux, extract and execute `install`.
+3. [Download Products Without Installation](https://www.mathworks.com/help/install/ug/download-only.html).
+    1. Log in to your account
+    2. Accept EULA
+    3. Click Advanced and select `Download Product without Installation`
+    4. Specify a temporary download location.
+    5. Select the products you want to install in the container image.
+    6. Confirm your selections and complete the download. 
+4. Move the downloaded folder to `matlab-install` subdirectory in this repo. Make sure you have the installation files (such as `install`, `license_agreement.txt`) directly within `matlab-install`.
 
-### MATLAB ISO
+### MATLAB ISO (Alternative Method)
 1. From the [MathWorks Downloads](https://www.mathworks.com/downloads/) page, select the desired version of MATLAB.
 2. Under the Related Links heading, click the link to get the ISO image for the chosen MATLAB version. 
 3. Download the ISO image for the Linux.
@@ -40,7 +54,8 @@ To obtain the installation files, you must be an administrator for the license l
 3. Click the download link under the Get License File heading. 
 4. Select the appropriate MATLAB version and click Continue.
 5. At the prompt “Is the software installed?” select “No” and click Continue.
-6. Copy the File Installation Key into a safe location.
+6. Download the `license.lic` and place it in the root directory.
+7. Copy the File Installation Key into a safe location.
 
 ## Step 4. Define Installation Parameters
 1. Make a copy of the file `installer_input.txt` in the `matlab-install` folder. Move the copy up one directory level, into the root directory of the cloned repository.
@@ -54,31 +69,51 @@ To obtain the installation files, you must be an administrator for the license l
 ## Step 5. Build Image
 Use the `docker build` command to build the image, using ```.``` to specify this folder. Run the command from the root directory of the cloned repository. Use a command of the form:
 ```
-docker build -t matlab:r2020a --build-arg LICENSE_SERVER=27000@MyServerName .
+docker build -t matlab:r2021b --build-arg MATLAB_RELEASE=R2021b --build-arg LICENSE_USERNAME=saravanabalagi
 ```
-**Note**: The `LICENSE_SERVER` build argument is NOT used during the build but by supplying it here during build it gets
-incorporated into the container so that MATLAB in the container knows how to acquire a license when the container is run
+- `--build-arg MATLAB_RELEASE` should be in the form of `R20xxx`, refers to a MATLAB release you are trying to build.
+- `--build-arg LICENSE_USERNAME` should be the username for the individual license file
 
-To build a previous version of MATLAB, for example `Dockerfile.R2019b`, use a command of the form 
+### Network License and License Manager
+If you would like to use a network license `network.lic`, alter the `Dockerfile` as follows:
 ```
-docker build -f Dockerfile.R2019b -t matlab:r2019b --build-arg MATLAB_RELEASE=R2019b --build-arg LICENSE_SERVER=27000@MyServerName .
-```
-You must supply a tag for the image using the `-t` option, for example, `matlab:r2020a`. The tag names the repository for later use and deployment. 
-Specify the location of the network licence manager using `--build-arg LICENSE_SERVER=27000@MyServerName`. Replace `27000@MyServerName` with the port and location of your license manager. Alternatively, you can use a `license.dat` or `network.lic` file to provide the location of the license manager. For more information, see [Use a License File to Build Image](#use-a-license-file-to-build-image).
+# Uncomment this line
+ADD network.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
 
-For the R2019b Dockerfile you must also specify the MATLAB release using `--build-arg MATLAB_RELEASE=R20xxx`, where `R20xxx` refers to a MATLAB release you are trying to build. 
+# Comment this line
+# ADD license.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
+``` 
+
+For more information, see [Use a License File to Build Image](#use-a-license-file-to-build-image).
+
+Alternatively, you can specify the location of the network license manager using `--build-arg LICENSE_SERVER=27000@MyServerName`. Replace `27000@MyServerName` with the port and location of your license manager. Update the `Dockerfile` appropriately as below:
+```
+# Uncomment these lines
+ARG LICENSE_SERVER
+ENV MLM_LICENSE_FILE=$LICENSE_SERVER
+
+# Comment these lines
+# ADD network.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
+# ADD license.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
+```
+### For older versions <= 2019b
+To build a previous version of MATLAB, use the `Dockerfile.R2019b` instead of `Dockerfile`: 
+```
+docker build -f Dockerfile.R2019b -t matlab:r2019b --build-arg MATLAB_RELEASE=R2019b --build-arg LICENSE_USERNAME=saravanabalagi .
+```
 
 ## Step 6. Run Container
 Use the `docker run` command to run the container. Use a command of the form:
 ```
-docker run -it --rm matlab:r2020a
+docker run -it --rm --network host matlab:r2020a
 ```
 - `-it` option runs the container interactively.
 - `--rm` option automatically removes the container on exit.
+- `--network host` enables [host networking](https://docs.docker.com/network/host/) mode, only needed when you use an individual license
 
 Any extra arguments after the container tag are passed directly as command line arguments to the MATLAB process inside the container. For example, the following command prints `hello world` in MATLAB and then exits.
 ```
-docker run -it --rm matlab:r2020a -r "disp('hello world');exit"
+docker run -it --rm --network host matlab:r2021b -r "disp('hello world');exit"
 ```
 
 ## Optional Dependencies
@@ -92,6 +127,7 @@ For some workflows and toolboxes, you must specify dependencies. You must do thi
 - Use the Polyspace 32-bit tcc compiler
 
 Edit the `Dockerfile` and uncomment the relevant lines to install the dependencies.
+
 ## Use a License File to Build Image
 If you have a `license.dat` file from your license administrator, you can use this file to provide the location of the license manager for the container image.
 1. Open the `license.dat` file. Copy the `SERVER` line into a new text file. 
@@ -105,6 +141,6 @@ USE_SERVER
 5. Uncomment the line `ADD network.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/`
 6. Run the docker build command without the `--build-arg LICENSE_SERVER=27000@MyServerName` option. Use a command of the form
 ```
-docker build -t matlab:r2020a .
+docker build -t matlab:r2021b .
 ```
 For more information about license files, see [What are the differences between the license.lic, license.dat, network.lic, and license_info.xml license files?](https://www.mathworks.com/matlabcentral/answers/116637-what-are-the-differences-between-the-license-lic-license-dat-network-lic-and-license_info-xml-lic)

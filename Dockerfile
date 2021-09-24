@@ -5,7 +5,7 @@
 # the Dockerfiles used to build them at https://github.com/mathworks-ref-arch/container-images/tree/master/matlab-deps
 FROM mathworks/matlab-deps as prebuilder
 
-LABEL  MAINTAINER=MathWorks
+LABEL MAINTAINER=MathWorks
 
 # To avoid inadvertently polluting the / directory, use root's home directory 
 # while running MATLAB.
@@ -55,10 +55,12 @@ FROM prebuilder
 
 COPY --from=middle-stage /usr/local/MATLAB /usr/local/MATLAB
 
+ARG MATLAB_RELEASE
+
 # Add a script to start MATLAB and soft link into /usr/local/bin
 ADD startmatlab.sh /opt/startscript/
 RUN chmod +x /opt/startscript/startmatlab.sh && \
-    ln -s /usr/local/MATLAB/bin/matlab /usr/local/bin/matlab
+    ln -s /usr/local/MATLAB/$MATLAB_RELEASE/bin/matlab /usr/local/bin/matlab
 
 # Add a user other than root to run MATLAB
 RUN useradd -ms /bin/bash matlab
@@ -69,22 +71,25 @@ RUN echo "matlab ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/matlab \
 # One of the following 2 ways of configuring the FlexLM server to use must be
 # uncommented.
 
-ARG LICENSE_SERVER
 # Specify the host and port of the machine that serves the network licenses 
 # if you want to bind in the license info as an environment variable. This 
 # is the preferred option for licensing. It is either possible to build with 
 # something like --build-arg LICENSE_SERVER=27000@MyServerName, alternatively
 # you could specify the license server directly using
 #       ENV MLM_LICENSE_FILE=27000@flexlm-server-name
-ENV MLM_LICENSE_FILE=$LICENSE_SERVER
+# ARG LICENSE_SERVER
+# ENV MLM_LICENSE_FILE=$LICENSE_SERVER
 
 # Alternatively you can put a license file (or license information) into the 
 # container. You should fill this file out with the details of the license 
 # server you want to use and uncomment the following line.
 # ADD network.lic /usr/local/MATLAB/licenses/
+ADD license.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
    
-USER matlab
-WORKDIR /home/matlab
+ARG LICENSE_USERNAME
+RUN useradd -ms /bin/bash $LICENSE_USERNAME
+USER $LICENSE_USERNAME
+WORKDIR /home/$LICENSE_USERNAME
 
 # Uncomment and maybe change the following line to setup mex in your container
 #RUN /usr/local/MATLAB/bin/mex -v -setup C++
