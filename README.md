@@ -1,6 +1,8 @@
 # MATLAB Docker Image
 
-This repo is forked from [matlab-dockerfile](https://github.com/mathworks-ref-arch/matlab-dockerfile) and has been modified to allow individual license files. 2021b has been tested to build and run successfully without issues.
+This repo is forked from [matlab-dockerfile](https://github.com/mathworks-ref-arch/matlab-dockerfile) and has been modified to allow individual license files. 2021b has been tested to build and run successfully without issues. Additionally, dockerfile for building container with additional useful [dev resources](#dev-container) such as Python, CUDA and Node is provided.
+
+![screenshot](screenshot.png)
 
 ## Before you begin
 You need a valid MATLAB license
@@ -144,3 +146,21 @@ USE_SERVER
 docker build -t matlab:r2021b .
 ```
 For more information about license files, see [What are the differences between the license.lic, license.dat, network.lic, and license_info.xml license files?](https://www.mathworks.com/matlabcentral/answers/116637-what-are-the-differences-between-the-license-lic-license-dat-network-lic-and-license_info-xml-lic)
+
+## Dev Container
+
+Building `Dockerfile.dev` should result in a container with
+
+- Python
+- CUDA
+- CuDNN
+- NVCC
+- Node
+- MATLAB
+
+useful for Research and Development purposes.
+
+```
+docker build -t matlab:r2021b-dev -f Dockerfile.dev --build-arg LICENSE_USERNAME=saravanabalagi --build-arg MATLAB_RELEASE=R2021b .
+docker run --rm -it --network host matlab:r2021b-dev
+```
