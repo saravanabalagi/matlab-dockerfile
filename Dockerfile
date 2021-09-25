@@ -62,12 +62,6 @@ ADD startmatlab.sh /opt/startscript/
 RUN chmod +x /opt/startscript/startmatlab.sh && \
     ln -s /usr/local/MATLAB/$MATLAB_RELEASE/bin/matlab /usr/local/bin/matlab
 
-# Add a user other than root to run MATLAB
-RUN useradd -ms /bin/bash matlab
-# Add bless that user with sudo powers
-RUN echo "matlab ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/matlab \
-    && chmod 0440 /etc/sudoers.d/matlab
-
 # One of the following 2 ways of configuring the FlexLM server to use must be
 # uncommented.
 
@@ -85,8 +79,8 @@ RUN echo "matlab ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/matlab \
 # server you want to use and uncomment the following line.
 # ADD network.lic /usr/local/MATLAB/licenses/
 ADD license.lic /usr/local/MATLAB/$MATLAB_RELEASE/licenses/
-   
-ARG LICENSE_USERNAME
+
+# Add user and set home as default dir 
 RUN useradd -ms /bin/bash $LICENSE_USERNAME
 USER $LICENSE_USERNAME
 WORKDIR /home/$LICENSE_USERNAME
